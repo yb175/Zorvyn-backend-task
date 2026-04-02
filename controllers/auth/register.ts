@@ -7,7 +7,7 @@ export default async function registerUser(req: any, res: any): Promise<void> {
         const parsed = registerSchema.safeParse(req.body);
 
         if (!parsed.success) {
-            res.status(400).json({ errors: parsed.error.format() });
+            res.status(400).json({ success: false, message: "Validation failed", data: parsed.error.format() });
             return;
         }
 
@@ -16,7 +16,7 @@ export default async function registerUser(req: any, res: any): Promise<void> {
         // Check if email already exists
         const existing = await prisma.user.findUnique({ where: { email } });
         if (existing) {
-            res.status(409).json({ message: "Email already exists" });
+            res.status(409).json({ success: false, message: "Email already exists" });
             return;
         }
 
@@ -32,14 +32,18 @@ export default async function registerUser(req: any, res: any): Promise<void> {
         });
 
         res.status(201).json({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
+            success: true,
+            data: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+            },
+            message: "User registered successfully"
         });
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ success: false, message: "Failed to register user" });
     }
 }

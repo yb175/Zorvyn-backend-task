@@ -1,19 +1,26 @@
 import { prisma } from "../../lib/prisma.js";
 import { z } from "zod";
+
+// Schema for updating task status (financial record status)
+const updateTaskStatusSchema = z.object({
+    status: z.enum(["PENDING", "IN_PROGRESS", "DONE"]),
+});
+
 export async function createTask(req: any, res: any): Promise<void> {
+    // Create a financial record (task) assigned to an employee for a customer
     try {
         const { title, description, assignedTo, customerId, status } = req.body;
         if (!title || !assignedTo || !customerId) {
-            return res.status(400).json({ message: "title, assignedTo and customerId are required" });
+            return res.status(400).json({ success: false, message: "title, assignedTo and customerId are required" });
         }
         const employee = await prisma.user.findUnique({ where: { id: assignedTo } });
         if (!employee || employee.role !== "EMPLOYEE") {
-            return res.status(404).json({ message: "Assigned employee not found" });
+            return res.status(404).json({ success: false, message: "Assigned employee not found" });
         }
 
         const customer = await prisma.customer.findUnique({ where: { id: customerId } });
         if (!customer) {
-            return res.status(404).json({ message: "Customer not found" });
+            return res.status(404).json({ success: false, message: "Customer not found" });
         }
 
         const allowedStatuses = ["PENDING", "IN_PROGRESS", "DONE"];
@@ -28,9 +35,9 @@ export async function createTask(req: any, res: any): Promise<void> {
             },
         });
 
-        res.status(201).json(task);
+        res.status(201).json({ success: true, data: task, message: "Financial record created successfully" });
     } catch (error : any) {
-        res.status(500).json({ message: error.message || "Internal server error" });
+        res.status(500).json({ success: false, message: error.message || "Failed to create financial record" });
     }
 }
 
@@ -59,15 +66,11 @@ const getTasks = async (req: any, res: any) => {
             },
         });
 
-        res.json(tasks);
+        res.json({ success: true, data: tasks });
     } catch (error) {
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Failed to retrieve financial records" });
     }
 };
-
-const updateTaskStatusSchema = z.object({
-    status: z.enum(["PENDING", "IN_PROGRESS", "DONE"]),
-});
 
 const updateTaskStatus = async (req: any, res: any) => {
     try {
@@ -76,7 +79,7 @@ const updateTaskStatus = async (req: any, res: any) => {
         const parsed = updateTaskStatusSchema.safeParse(req.body);
 
         if (!parsed.success) {
-            return res.status(400).json({ errors: parsed.error.format() });
+            return res.status(400).json({ success: false, message: "Validation failed", data: parsed.error.format() });
         }
 
         const task = await prisma.task.findUnique({
@@ -84,11 +87,11 @@ const updateTaskStatus = async (req: any, res: any) => {
         });
 
         if (!task) {
-            return res.status(404).json({ message: "Task not found" });
+            return res.status(404).json({ success: false, message: "Financial record not found" });
         }
 
         if (user.role !== "ADMIN" && task.assignedToId !== user.userId) {
-            return res.status(403).json({ message: "Forbidden: You cannot update this task" });
+            return res.status(403).json({ success: false, message: "Forbidden: You cannot update this financial record" });
         }
 
         const updatedTask = await prisma.task.update({
@@ -96,9 +99,9 @@ const updateTaskStatus = async (req: any, res: any) => {
             data: { status: parsed.data.status },
         });
 
-        res.json(updatedTask);
+        res.json({ success: true, data: updatedTask, message: "Financial record updated successfully" });
     } catch (error) {
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Failed to update financial record" });
     }
 };
 

@@ -93,16 +93,37 @@ JWT-based authentication using Bearer tokens.
 
 `POST /auth/register`
 
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "user-id",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "EMPLOYEE"
+  },
+  "message": "User registered successfully"
+}
+```
+
 ### Login
 
 `POST /auth/login`
 
-Login response includes:
-
+**Response:**
 ```json
 {
-  "accessToken": "JWT_TOKEN",
-  "user": { "id", "name", "email", "role" }
+  "success": true,
+  "data": {
+    "accessToken": "JWT_TOKEN",
+    "user": {
+      "id": "user-id",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "EMPLOYEE"
+    }
+  }
 }
 ```
 
@@ -123,32 +144,90 @@ Authorization: Bearer <JWT_TOKEN>
 
 ---
 
+## 📊 Standardized API Response Format
+
+All API responses follow a consistent structure:
+
+### Success Response
+```json
+{
+  "success": true,
+  "data": { /* response payload */ },
+  "message": "Operation completed successfully"
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "message": "Descriptive error message"
+}
+```
+
+### Key Points
+- **success**: Boolean indicating operation success/failure
+- **data**: Contains the response payload (present only on success)
+- **message**: Human-readable message describing the operation or error
+- All responses use appropriate **HTTP status codes**:
+  - `200/201` for success
+  - `400` for validation errors
+  - `401` for unauthorized access
+  - `403` for forbidden actions
+  - `404` for not found
+  - `409` for duplicate entries
+  - `500` for server errors
+
+---
+
 ## 📦 API Modules
 
 ### 🔑 Auth Module
 
-* Register new users
-* Login & receive JWT
+* **Register** - `POST /auth/register` - Create new user account
+* **Login** - `POST /auth/login` - Authenticate and receive JWT token
+
+Responses follow standardized format with `success`, `data`, and `message` fields.
 
 ### 👤 Users Module (Admin Only)
 
-* View all users
-* View user by ID
-* Update user role
+* **Get All Users** - `GET /users` - Retrieve all system users
+* **Get User by ID** - `GET /users/{id}` - Retrieve specific user details
+* **Update User Role** - `PATCH /users/{id}` - Change user role (ADMIN/EMPLOYEE)
+
+All responses include `success` status and user `data`.
 
 ### 🧑‍💼 Customers Module
 
-* Create customer (Admin)
-* Get paginated customers (All authenticated users)
-* Get customer by ID
-* Update customer (Admin)
-* Delete customer (Admin)
+* **Create Customer** - `POST /customers` - Create financial entity (Admin)
+* **Get Customers** - `GET /customers?page=1&limit=10` - Paginated customer list (All authenticated)
+* **Get Customer by ID** - `GET /customers/{id}` - Retrieve specific customer
+* **Update Customer** - `PATCH /customers/{id}` - Modify customer details (Admin)
+* **Delete Customer** - `DELETE /customers/{id}` - Remove customer (Admin)
 
-### 📝 Tasks Module
+Example paginated response:
+```json
+{
+  "success": true,
+  "data": {
+    "page": 1,
+    "limit": 10,
+    "totalRecords": 50,
+    "totalPages": 5,
+    "customers": [/* array of customers */]
+  }
+}
+```
 
-* Create task (Admin)
-* Get tasks (Admin → all, Employee → only assigned)
-* Update task status (Employee → only their task)
+### 📝 Tasks Module (Financial Records)
+
+* **Create Task** - `POST /tasks` - Create financial record (Admin)
+* **Get Tasks** - `GET /tasks` - View financial records (Admin → all, Employee → assigned only)
+* **Update Task Status** - `PATCH /tasks/{id}/status` - Change financial record status
+
+Task statuses: `PENDING`, `IN_PROGRESS`, `DONE`
+
+All task responses labeled as "financial records" in messages for domain clarity.
 
 ---
 
@@ -156,11 +235,32 @@ Authorization: Bearer <JWT_TOKEN>
 
 * Passwords are hashed with **bcrypt**
 * JWT contains `userId` and `role`
-* Employees cannot modify other employees’ tasks
-* Tasks must be linked to:
+* Employees cannot modify other employees' tasks/financial records
+* Financial records (tasks) must be linked to:
+  * A valid **customer** (financial entity)
+  * A valid **employee** (assigned worker)
+  * A valid **status** (PENDING, IN_PROGRESS, DONE)
 
-  * A valid **customer**
-  * A valid **employee**
+---
+
+## 🔧 Error Handling
+
+All endpoints return consistent error responses with meaningful messages:
+
+```json
+{
+  "success": false,
+  "message": "Specific error description"
+}
+```
+
+Error types handled:
+- **Validation Errors** (400) - Invalid input data
+- **Duplicate Entries** (409) - Email/phone already exists
+- **Not Found** (404) - Resource doesn't exist
+- **Access Denied** (403) - Insufficient permissions
+- **Unauthorized** (401) - Missing/invalid authentication
+- **Server Errors** (500) - Unexpected failures with descriptive messages
 
 ---
 
@@ -213,12 +313,16 @@ Includes:
 ## ✅ Features Implemented
 
 ✔ JWT Authentication
-✔ Role-based Authorization
+✔ Role-based Authorization (Admin/Employee)
 ✔ CRUD Operations
-✔ Pagination
-✔ Input Validation
+✔ Pagination with filtering
+✔ Input Validation (Zod schemas)
 ✔ Relational Data Handling
-✔ Swagger Documentation
+✔ Swagger (OpenAPI) Documentation
+✔ **Standardized API Response Format** (success/data/message)
+✔ Consistent Error Handling with meaningful messages
+✔ Express Router Type Safety (TypeScript)
+✔ Semantic domain clarity (Financial records, entities)
 
 ---
 

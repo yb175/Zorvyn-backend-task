@@ -8,12 +8,12 @@ export default async function loginUser(req: any, res: any): Promise<void> {
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
     const token = jwt.sign(
@@ -23,17 +23,20 @@ export default async function loginUser(req: any, res: any): Promise<void> {
     );
 
     return res.status(200).json({
-      accessToken: token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+      success: true,
+      data: {
+        accessToken: token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       },
     });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ success: false, message: "Failed to authenticate user" });
   }
 }
