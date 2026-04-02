@@ -35,7 +35,7 @@ const getCustomers = async (req: any, res: any) => {
         const { page = 1, limit = 10 } = req.query;
         const pageNumber = parseInt(page, 10);
         const limitNumber = parseInt(limit, 10);
-        if(limitNumber <= 0 || pageNumber <= 0) {
+        if (Number.isNaN(pageNumber) || Number.isNaN(limitNumber) || pageNumber <= 0 || limitNumber <= 0) {
             return res.status(400).json({ success: false, message: "Page and limit must be positive integers." });
         }
         const totalRecords = await prisma.customer.count();
