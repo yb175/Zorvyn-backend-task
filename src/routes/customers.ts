@@ -3,7 +3,7 @@ import authMiddleware from '../../middleware/authmiddleware.js';
 import adminMiddleware from "../../middleware/adminmiddleware.js";
 import customerController from "../../controllers/customer/customerController.js";
 
-const customerRouter = express.Router();
+const customerRouter: express.Router = express.Router();
 
 /**
  * @swagger

@@ -9,7 +9,7 @@ import adminMiddleware from "../../middleware/adminmiddleware.js";
  *   description: User management endpoints
  */
 
-const userRouter = express.Router();
+const userRouter: express.Router = express.Router();
 
 /**
  * @swagger

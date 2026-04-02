@@ -3,11 +3,12 @@ import { createCustomerSchema } from "../../utils/customerValidation.js";
 import { updateCustomerSchema } from "../../utils/customerValidation.js";
 
 const createCustomer = async (req: any, res: any) => {
+    // Create a financial entity (customer) that can be assigned financial records (tasks)
     try {
         const parsed = createCustomerSchema.safeParse(req.body);
 
         if (!parsed.success) {
-            return res.status(400).json({ errors: parsed.error.format() });
+            return res.status(400).json({ success: false, message: "Validation failed", data: parsed.error.format() });
         }
 
         const { name, email, phone } = parsed.data;
@@ -20,12 +21,12 @@ const createCustomer = async (req: any, res: any) => {
             },
         });
 
-        res.status(201).json(customer);
+        res.status(201).json({ success: true, data: customer, message: "Customer created successfully" });
     } catch (error: any) {
         if (error.code === "P2002") {
-            return res.status(409).json({ message: "Duplicate entry: A customer with this email or phone already exists." });
+            return res.status(409).json({ success: false, message: "Duplicate entry: A customer with this email or phone already exists." });
         }
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Failed to create customer" });
     }
 };
 
@@ -34,8 +35,8 @@ const getCustomers = async (req: any, res: any) => {
         const { page = 1, limit = 10 } = req.query;
         const pageNumber = parseInt(page, 10);
         const limitNumber = parseInt(limit, 10);
-        if(limitNumber <= 0 || pageNumber <= 0) {
-            return res.status(400).json({ message: "Page and limit must be positive integers." });
+        if (Number.isNaN(pageNumber) || Number.isNaN(limitNumber) || pageNumber <= 0 || limitNumber <= 0) {
+            return res.status(400).json({ success: false, message: "Page and limit must be positive integers." });
         }
         const totalRecords = await prisma.customer.count();
         const totalPages = Math.ceil(totalRecords / limitNumber);
@@ -46,14 +47,18 @@ const getCustomers = async (req: any, res: any) => {
         });
 
         res.json({
-            page: pageNumber,
-            limit: limitNumber,
-            totalRecords,
-            totalPages,
-            data: customers,
+            success: true,
+            data: {
+                page: pageNumber,
+                limit: limitNumber,
+                totalRecords,
+                totalPages,
+                customers: customers,
+            },
+            message: "Customers retrieved successfully"
         });
     } catch (error) {
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Failed to retrieve customers" });
     }
 };
 
@@ -65,12 +70,12 @@ const getCustomerById = async (req: any, res: any) => {
         });
 
         if (!customer) {
-            return res.status(404).json({ message: "Customer not found" });
+            return res.status(404).json({ success: false, message: "Customer not found" });
         }
 
-        res.json(customer);
+        res.json({ success: true, data: customer });
     } catch (error) {
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Failed to retrieve customer" });
     }
 };
 
@@ -80,14 +85,14 @@ const updateCustomer = async (req: any, res: any) => {
         const parsed = updateCustomerSchema.safeParse(req.body);
 
         if (!parsed.success) {
-            return res.status(400).json({ errors: parsed.error.format() });
+            return res.status(400).json({ success: false, message: "Validation failed", data: parsed.error.format() });
         }
         const prevCustomer = await prisma.customer.findUnique({
             where: { id },
         });
 
         if (!prevCustomer) {
-            return res.status(404).json({ message: "Customer not found" });
+            return res.status(404).json({ success: false, message: "Customer not found" });
         }
         const customer = await prisma.customer.update({
             where: { id },
@@ -99,15 +104,15 @@ const updateCustomer = async (req: any, res: any) => {
             },
         });
 
-        res.json(customer);
+        res.json({ success: true, data: customer, message: "Customer updated successfully" });
     } catch (error: any) {
         if (error.code === "P2002") {
-            return res.status(409).json({ message: "Duplicate entry: A customer with this email or phone already exists." });
+            return res.status(409).json({ success: false, message: "Duplicate entry: A customer with this email or phone already exists." });
         }
         if (error.code === "P2025") {
-            return res.status(404).json({ message: "Customer not found" });
+            return res.status(404).json({ success: false, message: "Customer not found" });
         }
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Failed to update customer" });
     }
 };
 
@@ -119,12 +124,12 @@ const deleteCustomer = async (req: any, res: any) => {
             where: { id },
         });
 
-        res.status(204).send({message : "Customer deleted successfully"});
+        res.status(200).json({ success: true, message: "Customer deleted successfully" });
     } catch (error: any) {
         if (error.code === "P2025") {
-            return res.status(404).json({ message: "Customer not found" });
+            return res.status(404).json({ success: false, message: "Customer not found" });
         }
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Failed to delete customer" });
     }
 };
 
