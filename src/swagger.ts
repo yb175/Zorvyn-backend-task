@@ -61,7 +61,6 @@ export const swaggerSpec = swaggerJsdoc({
             name: { type: "string" },
             email: { type: "string", format: "email" },
             phone: { type: "string" },
-            company: { type: "string" },
           },
         },
         
