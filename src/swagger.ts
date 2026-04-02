@@ -21,6 +21,35 @@ export const swaggerSpec = swaggerJsdoc({
           bearerFormat: "JWT",
         },
       },
+      schemas: {
+        RegisterUser: {
+          type: "object",
+          required: ["name", "email", "password", "role"],
+          properties: {
+            name: { type: "string" },
+            email: { type: "string", format: "email" },
+            password: { type: "string", minLength: 8 },
+            role: { type: "string", enum: ["ADMIN", "EMPLOYEE"] },
+          },
+        },
+        LoginUser: {
+          type: "object",
+          required: ["email", "password"],
+          properties: {
+            email: { type: "string", format: "email" },
+            password: { type: "string" },
+          },
+        },
+        User: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+            email: { type: "string", format: "email" },
+            role: { type: "string", enum: ["ADMIN", "EMPLOYEE"] },
+          },
+        },
+      },
     }
   },
   apis: ["src/routes/*.ts", "src/modules/**/*.ts"]
