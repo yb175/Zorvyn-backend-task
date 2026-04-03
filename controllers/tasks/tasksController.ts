@@ -14,7 +14,7 @@ export async function createTask(req: any, res: any): Promise<void> {
             return res.status(400).json({ success: false, message: "title, assignedTo and customerId are required" });
         }
         const employee = await prisma.user.findUnique({ where: { id: assignedTo } });
-        if (!employee || employee.role !== "EMPLOYEE") {
+        if (!employee || employee.role !== "EMPLOYEE" || employee.status !== "ACTIVE") {
             return res.status(404).json({ success: false, message: "Assigned employee not found" });
         }
 
@@ -44,9 +44,11 @@ export async function createTask(req: any, res: any): Promise<void> {
 const getTasks = async (req: any, res: any) => {
     try {
         const user = req.user;
+        const isAdmin = user.role === "ADMIN";
+        const isAnalyst = user.role === "ANALYST";
 
         const tasks = await prisma.task.findMany({
-            where: user.role === "ADMIN" ? {} : { assignedToId: user.userId },
+            where: isAdmin || isAnalyst ? {} : { assignedToId: user.userId },
             include: {
                 assignedTo: {
                     select: {
@@ -69,6 +71,36 @@ const getTasks = async (req: any, res: any) => {
         res.json({ success: true, data: tasks });
     } catch (error) {
         res.status(500).json({ success: false, message: "Failed to retrieve financial records" });
+    }
+};
+
+const getTaskInsights = async (req: any, res: any) => {
+    try {
+        const user = req.user;
+
+        if (user.role !== "ADMIN" && user.role !== "ANALYST") {
+            return res.status(403).json({ success: false, message: "Forbidden: Insights are available to Admin and Analyst users only" });
+        }
+
+        const [totalTasks, pendingTasks, inProgressTasks, doneTasks] = await Promise.all([
+            prisma.task.count(),
+            prisma.task.count({ where: { status: "PENDING" } }),
+            prisma.task.count({ where: { status: "IN_PROGRESS" } }),
+            prisma.task.count({ where: { status: "DONE" } }),
+        ]);
+
+        return res.json({
+            success: true,
+            data: {
+                totalTasks,
+                pendingTasks,
+                inProgressTasks,
+                doneTasks,
+            },
+            message: "Task insights retrieved successfully",
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Failed to retrieve task insights" });
     }
 };
 
@@ -105,4 +137,4 @@ const updateTaskStatus = async (req: any, res: any) => {
     }
 };
 
-export  { getTasks, updateTaskStatus };
+export  { getTasks, getTaskInsights, updateTaskStatus };

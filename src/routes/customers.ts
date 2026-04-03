@@ -1,5 +1,5 @@
 import express from 'express';
-import authMiddleware from '../../middleware/authmiddleware.js';
+import userMiddleware from '../../middleware/usermiddleware.js';
 import adminMiddleware from "../../middleware/adminmiddleware.js";
 import customerController from "../../controllers/customer/customerController.js";
 
@@ -53,7 +53,7 @@ customerRouter.post("/", adminMiddleware, customerController.createCustomer);
  *   get:
  *     summary: Get all customers
  *     tags: [Customers]
- *     description: Accessible by Admin and Authenticated users to view customers.
+ *     description: Accessible only by Admin and Analyst users to view customers.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -90,7 +90,7 @@ customerRouter.post("/", adminMiddleware, customerController.createCustomer);
  *       500:
  *         description: Internal server error
  */
-customerRouter.get("/", authMiddleware, customerController.getCustomers);
+customerRouter.get("/", userMiddleware, customerController.getCustomers);
 
 /**
  * @swagger
@@ -98,7 +98,7 @@ customerRouter.get("/", authMiddleware, customerController.getCustomers);
  *   get:
  *     summary: Get customer by ID
  *     tags: [Customers]
- *     description: Accessible by Admin and Authenticated users to view a specific customer.
+ *     description: Accessible only by Admin and Analyst users to view a specific customer.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -119,7 +119,7 @@ customerRouter.get("/", authMiddleware, customerController.getCustomers);
  *       500:
  *         description: Internal server error
  */
-customerRouter.get("/:id", authMiddleware, customerController.getCustomerById);
+customerRouter.get("/:id", userMiddleware, customerController.getCustomerById);
 
 /**
  * @swagger

@@ -32,6 +32,12 @@ const createCustomer = async (req: any, res: any) => {
 
 const getCustomers = async (req: any, res: any) => {
     try {
+        const user = req.user;
+
+        if (user.role !== "ADMIN" && user.role !== "ANALYST") {
+            return res.status(403).json({ success: false, message: "Forbidden: Customers are available to Admin and Analyst users only" });
+        }
+
         const { page = 1, limit = 10 } = req.query;
         const pageNumber = parseInt(page, 10);
         const limitNumber = parseInt(limit, 10);
@@ -64,6 +70,12 @@ const getCustomers = async (req: any, res: any) => {
 
 const getCustomerById = async (req: any, res: any) => {
     try {
+        const user = req.user;
+
+        if (user.role !== "ADMIN" && user.role !== "ANALYST") {
+            return res.status(403).json({ success: false, message: "Forbidden: Customers are available to Admin and Analyst users only" });
+        }
+
         const { id } = req.params;
         const customer = await prisma.customer.findUnique({
             where: { id },

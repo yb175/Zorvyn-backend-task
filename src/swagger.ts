@@ -6,7 +6,22 @@ export const swaggerSpec = swaggerJsdoc({
     info: {
       title: "Mini CRM API",
       version: "2.0.0 (Refactored)",
-      description: "Backend Intern Assignment API Docs - Standardized Response Format",
+      description: `Backend Intern Assignment API Docs - Standardized Response Format
+
+    ## Role Definitions
+
+    | Role | Access |
+    | --- | --- |
+    | ADMIN | Full access to users, customers, tasks, and insights |
+    | ANALYST | Read-only access to records and insights |
+    | EMPLOYEE | Restricted access to assigned data only; no analytics |
+
+    ## Authorization Notes
+
+    - All protected routes require a valid Bearer JWT.
+    - Inactive users receive a 403 response and cannot access protected routes.
+    - Responses use the format: { success: boolean, data?: any, message?: string }.
+    `,
     },
     servers: [
       {
@@ -22,6 +37,21 @@ export const swaggerSpec = swaggerJsdoc({
         },
       },
       schemas: {
+        ApiSuccessResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean", example: true },
+            data: {},
+            message: { type: "string" },
+          },
+        },
+        ApiErrorResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean", example: false },
+            message: { type: "string" },
+          },
+        },
         // Input Schemas
         RegisterUser: {
           type: "object",
@@ -30,7 +60,31 @@ export const swaggerSpec = swaggerJsdoc({
             name: { type: "string" },
             email: { type: "string", format: "email" },
             password: { type: "string", minLength: 8 },
-            role: { type: "string", enum: ["ADMIN", "EMPLOYEE"] },
+            role: { type: "string", enum: ["ADMIN", "ANALYST", "EMPLOYEE"] },
+          },
+        },
+        CreateUser: {
+          type: "object",
+          required: ["name", "email", "password", "role"],
+          properties: {
+            name: { type: "string" },
+            email: { type: "string", format: "email" },
+            password: { type: "string", minLength: 8 },
+            role: { type: "string", enum: ["ADMIN", "ANALYST", "EMPLOYEE"] },
+          },
+        },
+        UpdateUserRole: {
+          type: "object",
+          required: ["role"],
+          properties: {
+            role: { type: "string", enum: ["ADMIN", "ANALYST", "EMPLOYEE"] },
+          },
+        },
+        UpdateUserStatus: {
+          type: "object",
+          required: ["status"],
+          properties: {
+            status: { type: "string", enum: ["ACTIVE", "INACTIVE"] },
           },
         },
         LoginUser: {
@@ -49,7 +103,8 @@ export const swaggerSpec = swaggerJsdoc({
             id: { type: "string", format: "uuid" },
             name: { type: "string" },
             email: { type: "string", format: "email" },
-            role: { type: "string", enum: ["ADMIN", "EMPLOYEE"] },
+            role: { type: "string", enum: ["ADMIN", "ANALYST", "EMPLOYEE"] },
+            status: { type: "string", enum: ["ACTIVE", "INACTIVE"] },
             createdAt: { type: "string", format: "date-time" },
           },
         },
@@ -125,6 +180,15 @@ export const swaggerSpec = swaggerJsdoc({
             success: { type: "boolean", example: false },
             message: { type: "string", example: "Validation failed" },
             data: { type: "object" },
+          },
+        },
+
+        RolePermissions: {
+          type: "object",
+          properties: {
+            ADMIN: { type: "string", example: "Full access to users, customers, tasks, and insights" },
+            ANALYST: { type: "string", example: "Read-only access to records and insights" },
+            EMPLOYEE: { type: "string", example: "Restricted access to assigned data only" },
           },
         },
       },

@@ -1,5 +1,5 @@
 import express from "express";
-import { createTask,getTasks, updateTaskStatus } from "../../controllers/tasks/tasksController.js";
+import { createTask, getTaskInsights, getTasks, updateTaskStatus } from "../../controllers/tasks/tasksController.js";
 import adminMiddleware from "../../middleware/adminmiddleware.js";
 import userMiddleware from "../../middleware/usermiddleware.js";
 
@@ -55,7 +55,7 @@ tasksRouter.post("/", adminMiddleware, createTask);
  *   get:
  *     summary: Get all tasks
  *     tags: [Tasks]
- *     description: Accessible by Admin users to view all tasks or by Employees to view their assigned tasks.
+ *     description: Accessible by Admin and Analyst users to view all tasks, or by Employees to view their assigned tasks.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -74,11 +74,32 @@ tasksRouter.get("/", userMiddleware, getTasks);
 
 /**
  * @swagger
+ * /tasks/insights:
+ *   get:
+ *     summary: Get task insights
+ *     tags: [Tasks]
+ *     description: Accessible only by Admin and Analyst users. Employees cannot access analytics.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Task summary information
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
+tasksRouter.get("/insights", userMiddleware, getTaskInsights);
+
+/**
+ * @swagger
  * /tasks/{id}/status:
  *   patch:
  *     summary: Update task status
  *     tags: [Tasks]
- *     description: Accessible by Employees to update the status of their assigned tasks.
+ *     description: Accessible by Admin users or the assigned employee to update task status.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -106,6 +127,8 @@ tasksRouter.get("/", userMiddleware, getTasks);
  *         description: Invalid status
  *       404:
  *         description: Task not found
+ *       403:
+ *         description: Forbidden
  *       500:
  *         description: Internal server error
  */

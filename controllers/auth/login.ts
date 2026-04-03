@@ -11,6 +11,10 @@ export default async function loginUser(req: any, res: any): Promise<void> {
       return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
+    if (user.status === "INACTIVE") {
+      return res.status(403).json({ success: false, message: "Forbidden: User account is inactive" });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: "Invalid email or password" });
@@ -31,6 +35,7 @@ export default async function loginUser(req: any, res: any): Promise<void> {
           name: user.name,
           email: user.email,
           role: user.role,
+          status: user.status,
         },
       },
     });
