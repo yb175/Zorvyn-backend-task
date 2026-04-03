@@ -245,7 +245,9 @@ tasksRouter.patch("/:id/status", userMiddleware, updateTaskStatus);
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   type: null
+ *                   type: object
+ *                   nullable: true
+ *                   example: null
  *                 message:
  *                   type: string
  *       403:

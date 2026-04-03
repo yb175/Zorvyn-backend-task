@@ -61,6 +61,15 @@ const getTasks = async (req: any, res: any) => {
         // Parse and validate filter parameters
         const filterParsed = filterFinancialRecordsSchema.safeParse(req.query);
         
+        // Return 400 error if filters are invalid
+        if (Object.keys(req.query).length > 0 && !filterParsed.success) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid filters", 
+                data: filterParsed.error.format() 
+            });
+        }
+        
         // Build where clause for filtering
         const where: any = isAdmin || isAnalyst ? {} : { assignedToId: user.userId };
         
@@ -118,37 +127,39 @@ const getTaskInsights = async (req: any, res: any) => {
             return res.status(403).json({ success: false, message: "Forbidden: Insights are available to Admin and Analyst users only" });
         }
 
-        // Financial metrics
-        const allRecords = await prisma.task.findMany({
-            select: {
-                id: true,
-                amount: true,
-                type: true,
-                category: true,
-                status: true,
-            },
+        // Financial metrics using Prisma aggregations to avoid precision loss
+        const incomeAgg = await prisma.task.aggregate({
+            where: { type: "INCOME" },
+            _sum: { amount: true },
+            _count: true,
         });
 
-        // Calculate summary metrics
-        const totalIncome = allRecords
-            .filter((r: any) => r.type === "INCOME")
-            .reduce((sum, r: any) => sum + Number(r.amount), 0);
+        const expenseAgg = await prisma.task.aggregate({
+            where: { type: "EXPENSE" },
+            _sum: { amount: true },
+            _count: true,
+        });
 
-        const totalExpense = allRecords
-            .filter((r: any) => r.type === "EXPENSE")
-            .reduce((sum, r: any) => sum + Number(r.amount), 0);
-
+        const totalIncome = incomeAgg._sum.amount ? Number(incomeAgg._sum.amount) : 0;
+        const totalExpense = expenseAgg._sum.amount ? Number(expenseAgg._sum.amount) : 0;
         const netBalance = totalIncome - totalExpense;
 
-        // Category breakdown
+        // Category breakdown using Prisma groupBy to avoid in-memory calculation
+        const categoryBreakdownRaw = await prisma.task.groupBy({
+            by: ["type", "category"],
+            _sum: { amount: true },
+            _count: true,
+        });
+
+        // Build category breakdown with composite keys to avoid collisions
         const categoryBreakdown: Record<string, { count: number; amount: number; type: string }> = {};
-        allRecords.forEach((record: any) => {
-            if (!categoryBreakdown[record.category]) {
-                categoryBreakdown[record.category] = { count: 0, amount: 0, type: record.type };
-            }
-            const category = categoryBreakdown[record.category]!;
-            category.count += 1;
-            category.amount += Number(record.amount);
+        categoryBreakdownRaw.forEach((record: any) => {
+            const compositeKey = `${record.type}:${record.category}`;
+            categoryBreakdown[compositeKey] = {
+                count: record._count,
+                amount: record._sum.amount ? Number(record._sum.amount) : 0,
+                type: record.type,
+            };
         });
 
         // Status counts

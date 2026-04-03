@@ -10,8 +10,8 @@ export const createFinancialRecordSchema = z.object({
     title: z.string().optional(),
     description: z.string().optional(),
     status: z.enum(["PENDING", "IN_PROGRESS", "DONE"]).optional(),
-    assignedTo: z.string(),
-    customerId: z.string(),
+    assignedTo: z.string().uuid("Invalid assignedTo ID format - must be valid UUID"),
+    customerId: z.string().uuid("Invalid customerId format - must be valid UUID"),
 });
 
 export const updateFinancialRecordSchema = z.object({

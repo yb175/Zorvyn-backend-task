@@ -62,8 +62,8 @@ model Task {
   
   // Financial Record Fields
   amount        Decimal         @default(0)
-  type          TransactionType 
-  category      String
+  type          TransactionType?
+  category      String?
   date          DateTime        @default(now())
   notes         String?         /// Max 500 characters
   
