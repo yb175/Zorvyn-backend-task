@@ -18,6 +18,7 @@ app.use(bodyParser.json({
 app.use((err: SyntaxError & { status?: number; body?: string }, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
     return res.status(400).json({
+      success: false,
       message: "Invalid JSON payload",
       error: err.message,
     });

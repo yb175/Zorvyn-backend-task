@@ -28,6 +28,7 @@ export default async function registerUser(req: any, res: any): Promise<void> {
                 email,
                 password: hashedPassword,
                 role,
+                status: "ACTIVE",
             },
         });
 
@@ -38,6 +39,7 @@ export default async function registerUser(req: any, res: any): Promise<void> {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                status: user.status,
             },
             message: "User registered successfully"
         });

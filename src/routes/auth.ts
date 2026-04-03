@@ -28,14 +28,10 @@ const authRouter: express.Router = express.Router();
  *             name: John Doe
  *             email: johndoe@example.com
  *             password: password123
- *             role: EMPLOYEE
+ *             role: ANALYST
  *     responses:
  *       201:
  *         description: User registered successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  *       400:
  *         description: Validation errors
  *       409:
@@ -64,17 +60,10 @@ authRouter.post("/register", registerUser);
  *     responses:
  *       200:
  *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
  *       401:
  *         description: Invalid email or password
+ *       403:
+ *         description: Inactive user
  *       500:
  *         description: Internal server error
  */
