@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import bcrypt from "bcrypt";
+import registerSchema from "../../utils/parseRegisterPayload.js";
 
 const allowedRoles = ["ADMIN", "ANALYST", "EMPLOYEE"];
 const allowedStatuses = ["ACTIVE", "INACTIVE"];
@@ -16,11 +17,13 @@ const userSelect = {
 
 const createUser = async (req: any, res: any) => {
     try {
-        const { name, email, password, role } = req.body;
+        const parsed = registerSchema.safeParse(req.body);
 
-        if (!name || !email || !password || !role) {
-            return res.status(400).json({ success: false, message: "name, email, password and role are required" });
+        if (!parsed.success) {
+            return res.status(400).json({ success: false, message: "Validation failed", data: parsed.error.format() });
         }
+
+        const { name, email, password, role } = parsed.data;
 
         if (!allowedRoles.includes(role)) {
             return res.status(400).json({ success: false, message: "Invalid role. Must be ADMIN, ANALYST or EMPLOYEE" });
@@ -50,6 +53,10 @@ const createUser = async (req: any, res: any) => {
             message: "User created successfully",
         });
     } catch (error) {
+        const err = error as any;
+        if (err.code === "P2002") {
+            return res.status(409).json({ success: false, message: "Email already exists" });
+        }
         return res.status(500).json({ success: false, message: "Failed to create user" });
     }
 };

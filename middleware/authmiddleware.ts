@@ -11,16 +11,26 @@ export default async function authMiddleware(req: any, res: any, next: any): Pro
 
         const token = authHeader.split(" ")[1];
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+        } catch (jwtErr) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
 
         if (typeof decoded !== "object" || decoded === null || !("userId" in decoded)) {
             return res.status(401).json({ success: false, message: "Unauthorized" });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { id: (decoded as any).userId },
-            select: { id: true, role: true, status: true },
-        });
+        let user;
+        try {
+            user = await prisma.user.findUnique({
+                where: { id: (decoded as any).userId },
+                select: { id: true, role: true, status: true },
+            });
+        } catch (dbErr) {
+            return res.status(500).json({ success: false, message: "Internal server error" });
+        }
 
         if (!user) {
             return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -33,6 +43,6 @@ export default async function authMiddleware(req: any, res: any, next: any): Pro
         req.user = { userId: user.id, role: user.role, status: user.status };
         next();
     } catch (err) {
-        return res.status(401).json({ success: false, message: "Unauthorized" });
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }

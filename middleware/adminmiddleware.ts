@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 
-export default async function userMiddleware(req: any, res: any, next: any): Promise<void> {
+export default async function adminMiddleware(req: any, res: any, next: any): Promise<void> {
     try {
         const authHeader = req.headers.authorization;
 
