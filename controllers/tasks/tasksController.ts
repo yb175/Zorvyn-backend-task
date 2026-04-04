@@ -147,6 +147,10 @@ const getTaskInsights = async (req: any, res: any) => {
         // Category breakdown using Prisma groupBy to avoid in-memory calculation
         const categoryBreakdownRaw = await prisma.task.groupBy({
             by: ["type", "category"],
+            where: {
+                type: { in: ["INCOME", "EXPENSE"] },
+                category: { not: null },
+            },
             _sum: { amount: true },
             _count: true,
         });
