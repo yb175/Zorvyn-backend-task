@@ -1,6 +1,8 @@
 import express from "express";
 import registerUser from "../../controllers/auth/register.js";
 import loginUser from "../../controllers/auth/login.js";
+import changePassword from "../../controllers/auth/changePassword.js";
+import authMiddleware from "../../middleware/authmiddleware.js";
 
 const authRouter: express.Router = express.Router();
 
@@ -68,6 +70,45 @@ authRouter.post("/register", registerUser);
  *         description: Internal server error
  */
 authRouter.post("/login", loginUser);
+
+/**
+ * @swagger
+ * /auth/change-password:
+ *   post:
+ *     summary: Change user password
+ *     tags: [Auth]
+ *     description: Accessible by authenticated users to change their password.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: ["currentPassword", "newPassword"]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 description: Current password for verification
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 description: New password (minimum 8 characters)
+ *           example:
+ *             currentPassword: "oldPassword123"
+ *             newPassword: "newPassword456"
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Validation failed or new password same as current
+ *       401:
+ *         description: Current password is incorrect or user not found
+ *       500:
+ *         description: Internal server error
+ */
+authRouter.post("/change-password", authMiddleware, changePassword);
 
 
 export default authRouter;

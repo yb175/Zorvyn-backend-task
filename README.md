@@ -1,9 +1,17 @@
 ---
 
-# 🧩 Mini CRM Backend API
+# 💰 Finance Data Processing & Access Control Backend
 
-A role-based CRM backend built with **Express + TypeScript + Prisma + PostgreSQL**.
-This system supports authentication, user management, customer tracking, and task assignment with strict role-based access control.
+A role-based financial records backend built with **Express + TypeScript + Prisma + PostgreSQL**.
+This system processes financial transactions with role-based access control (RBAC), comprehensive analytics, and secure user management.
+
+**Features:**
+- 🔐 Role-based access control (ADMIN, ANALYST, EMPLOYEE)
+- 📊 Financial analytics and dashboard insights
+- 💳 Transaction management (income/expense)
+- 👥 User and role management
+- 📈 Category-wise breakdown and trends
+- 🔑 JWT authentication with password management
 
 ---
 
@@ -22,14 +30,15 @@ This system supports authentication, user management, customer tracking, and tas
 ## 📁 Project Structure
 
 ```
-crm-task/
-├── controllers/        # Business logic
+finance-backend/
+├── controllers/        # Business logic for each module
 ├── middleware/         # Auth & role guards
 ├── routes/             # API route definitions
-├── prisma/             # Database schema
+├── prisma/             # Database schema & migrations
 ├── lib/                # Prisma client setup
 ├── utils/              # Validation schemas
-├── src/                # App entry + swagger config
+├── src/                # App entry point + swagger config
+├── generated/          # Prisma generated types
 ```
 
 ---
@@ -40,7 +49,9 @@ Create a `.env` file in the root:
 
 ```
 DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/DB_NAME?schema=public
-JWT_SECRET=your_super_secret_key
+JWT_SECRET=your_super_secret_key_min_32_chars
+NODE_ENV=development
+PORT=5000
 ```
 
 ---
@@ -85,23 +96,34 @@ http://localhost:5000/api-docs
 
 ---
 
-## 🔐 Authentication
+## 🔐 Authentication & Authorization
 
-JWT-based authentication using Bearer tokens.
+JWT-based authentication using Bearer tokens. Includes support for password management.
 
 ### Register
 
 `POST /auth/register`
+
+**Request:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "SecurePassword123",
+  "role": "EMPLOYEE|ANALYST|ADMIN"
+}
+```
 
 **Response:**
 ```json
 {
   "success": true,
   "data": {
-    "id": "user-id",
+    "id": "user-uuid",
     "name": "John Doe",
     "email": "john@example.com",
-    "role": "EMPLOYEE"
+    "role": "EMPLOYEE",
+    "status": "ACTIVE"
   },
   "message": "User registered successfully"
 }
@@ -118,12 +140,25 @@ JWT-based authentication using Bearer tokens.
   "data": {
     "accessToken": "JWT_TOKEN",
     "user": {
-      "id": "user-id",
+      "id": "user-uuid",
       "name": "John Doe",
       "email": "john@example.com",
-      "role": "EMPLOYEE"
+      "role": "EMPLOYEE",
+      "status": "ACTIVE"
     }
   }
+}
+```
+
+### Change Password
+
+`POST /auth/change-password`
+
+**Request:**
+```json
+{
+  "currentPassword": "OldPassword123",
+  "newPassword": "NewPassword456"
 }
 ```
 
@@ -135,12 +170,15 @@ Authorization: Bearer <JWT_TOKEN>
 
 ---
 
-## 👥 Roles
+## 👥 Roles & Permissions
 
-| Role         | Permissions                                                      |
-| ------------ | ---------------------------------------------------------------- |
-| **ADMIN**    | Full access to users, customers, and tasks                       |
-| **EMPLOYEE** | Can view customers, see assigned tasks, update their task status |
+| Role | Permissions |
+|------|-------------|
+| **ADMIN** | Full CRUD on all records, user management, financial analytics, dashboard access |
+| **ANALYST** | Read-only access to all records, view analytics, access dashboard insights |
+| **EMPLOYEE** | View assigned records only, update own record status, no dashboard access |
+
+**User Status:** `ACTIVE` or `INACTIVE` - Inactive users cannot access any protected endpoints.
 
 ---
 
@@ -161,22 +199,19 @@ All API responses follow a consistent structure:
 ```json
 {
   "success": false,
-  "message": "Descriptive error message"
+  "message": "Descriptive error message",
+  "data": null
 }
 ```
 
-### Key Points
-- **success**: Boolean indicating operation success/failure
-- **data**: Contains the response payload (present only on success)
-- **message**: Human-readable message describing the operation or error
-- All responses use appropriate **HTTP status codes**:
-  - `200/201` for success
-  - `400` for validation errors
-  - `401` for unauthorized access
-  - `403` for forbidden actions
-  - `404` for not found
-  - `409` for duplicate entries
-  - `500` for server errors
+### HTTP Status Codes
+- `200/201` - Success
+- `400` - Validation errors
+- `401` - Unauthorized (missing/invalid token)
+- `403` - Forbidden (insufficient permissions or inactive user)
+- `404` - Resource not found
+- `409` - Conflict (duplicate entry)
+- `500` - Server errors
 
 ---
 
@@ -186,66 +221,75 @@ All API responses follow a consistent structure:
 
 * **Register** - `POST /auth/register` - Create new user account
 * **Login** - `POST /auth/login` - Authenticate and receive JWT token
-
-Responses follow standardized format with `success`, `data`, and `message` fields.
+* **Change Password** - `POST /auth/change-password` - Update user password (authenticated)
 
 ### 👤 Users Module (Admin Only)
 
+* **Create User** - `POST /users` - Create new user with role assignment
 * **Get All Users** - `GET /users` - Retrieve all system users
 * **Get User by ID** - `GET /users/{id}` - Retrieve specific user details
-* **Update User Role** - `PATCH /users/{id}` - Change user role (ADMIN/EMPLOYEE)
+* **Update User Role** - `PATCH /users/{id}` - Change user role
+* **Update User Status** - `PATCH /users/{id}/status` - Activate/deactivate user
+* **Delete User** - `DELETE /users/{id}` - Permanently remove user account
 
-All responses include `success` status and user `data`.
-
-### 🧑‍💼 Customers Module
+### 💼 Customers Module (Financial Entities)
 
 * **Create Customer** - `POST /customers` - Create financial entity (Admin)
-* **Get Customers** - `GET /customers?page=1&limit=10` - Paginated customer list (All authenticated)
-* **Get Customer by ID** - `GET /customers/{id}` - Retrieve specific customer
-* **Update Customer** - `PATCH /customers/{id}` - Modify customer details (Admin)
-* **Delete Customer** - `DELETE /customers/{id}` - Remove customer (Admin)
+* **Get Customers** - `GET /customers?page=1&limit=10` - Paginated list (Admin/Analyst)
+* **Get Customer by ID** - `GET /customers/{id}` - Retrieve customer details
+* **Update Customer** - `PUT /customers/{id}` - Modify customer info
+* **Delete Customer** - `DELETE /customers/{id}` - Remove customer
 
-Example paginated response:
-```json
-{
-  "success": true,
-  "data": {
-    "page": 1,
-    "limit": 10,
-    "totalRecords": 50,
-    "totalPages": 5,
-    "customers": [/* array of customers */]
-  }
-}
-```
+### 💳 Financial Records Module (Tasks)
 
-### 📝 Tasks Module (Financial Records)
+* **Create Record** - `POST /tasks` - Create financial transaction (Admin only)
+* **Get Records** - `GET /tasks?type=INCOME&category=Salary&dateFrom=2026-01-01&dateTo=2026-12-31` - View records with filtering
+* **Update Record** - `PATCH /tasks/{id}` - Update transaction details (amount, category, type, date, notes)
+* **Update Status** - `PATCH /tasks/{id}/status` - Change record status
+* **Delete Record** - `DELETE /tasks/{id}` - Remove record (Admin only)
+* **Get Insights** - `GET /tasks/insights` - Financial analytics (Admin/Analyst)
 
-* **Create Task** - `POST /tasks` - Create financial record (Admin)
-* **Get Tasks** - `GET /tasks` - View financial records (Admin → all, Employee → assigned only)
-* **Update Task Status** - `PATCH /tasks/{id}/status` - Change financial record status
+**Record Types:** `INCOME`, `EXPENSE`  
+**Record Status:** `PENDING`, `IN_PROGRESS`, `DONE`
 
-Task statuses: `PENDING`, `IN_PROGRESS`, `DONE`
+### 📈 Dashboard Module
 
-All task responses labeled as "financial records" in messages for domain clarity.
+* **Summary** - `GET /dashboard/summary` - Total income, expense, net balance
+* **Insights** - `GET /dashboard/insights` - Category breakdown, recent activity, monthly trends
+
+**Access:** ADMIN and ANALYST only
 
 ---
 
 ## 🧠 Business Rules
 
-* Passwords are hashed with **bcrypt**
-* JWT contains `userId` and `role`
-* Employees cannot modify other employees' tasks/financial records
-* Financial records (tasks) must be linked to:
-  * A valid **customer** (financial entity)
-  * A valid **employee** (assigned worker)
-  * A valid **status** (PENDING, IN_PROGRESS, DONE)
+* Passwords are hashed with **bcrypt** (10 salt rounds)
+* JWT tokens expire in **1 hour**
+* Inactive users get **403 Forbidden** on all protected routes
+* Employees can only:
+  - View their assigned financial records
+  - Update their own record **status only** (PENDING, IN_PROGRESS, DONE)
+  - Cannot update financial details (amount, category, type, date, notes)
+  - Cannot access dashboard or view all records
+* Analysts can:
+  - View all records (read-only)
+  - Access dashboard and analytics
+  - Cannot create, update, or delete records
+* Admins have full system access
+* Financial records must be linked to valid customer and employee entities
+
+### Financial Calculations
+- **Total Income:** Sum of all INCOME type records
+- **Total Expense:** Sum of all EXPENSE type records
+- **Net Balance:** Total Income - Total Expense
+- **Category Breakdown:** Sum aggregated by (type + category)
+- **Monthly Trends:** Income, expense, and net balance grouped by month (YYYY-MM)
 
 ---
 
 ## 🔧 Error Handling
 
-All endpoints return consistent error responses with meaningful messages:
+All endpoints return consistent error responses:
 
 ```json
 {
@@ -254,12 +298,13 @@ All endpoints return consistent error responses with meaningful messages:
 }
 ```
 
-Error types handled:
-- **Validation Errors** (400) - Invalid input data
-- **Duplicate Entries** (409) - Email/phone already exists
+Error types and HTTP codes:
+- **Validation Errors** (400) - Invalid input, missing fields, constraint violations
+- **Unauthorized** (401) - Missing or invalid JWT token
+- **Inactive User** (403) - User account is deactivated
+- **Forbidden** (403) - Insufficient permissions for operation
 - **Not Found** (404) - Resource doesn't exist
-- **Access Denied** (403) - Insufficient permissions
-- **Unauthorized** (401) - Missing/invalid authentication
+- **Conflict** (409) - Duplicate entry (email, phone, etc.)
 - **Server Errors** (500) - Unexpected failures with descriptive messages
 
 ---
@@ -273,28 +318,68 @@ http://localhost:5000/api-docs
 ```
 
 Includes:
-
-* Request/response schemas
-* Authentication
+* Complete request/response schemas
+* Authentication requirements per endpoint
 * All endpoints grouped by module
+* Example payloads for each operation
+* Error response documentation
 
 ---
 
-## 🗄 Database Schema (Overview)
+## 🗄 Database Schema
 
 ### User
+- `id` (UUID, primary key)
+- `name` (string)
+- `email` (string, unique)
+- `password` (hashed)
+- `role` (ADMIN | ANALYST | EMPLOYEE)
+- `status` (ACTIVE | INACTIVE)
+- `createdAt`, `updatedAt`
 
-* id, name, email, password, role
+### Customer (Financial Entity)
+- `id` (UUID, primary key)
+- `name` (string)
+- `email` (string, unique)
+- `phone` (string, unique)
+- `company` (string, optional)
+- `createdAt`, `updatedAt`
 
-### Customer
+### Task (Financial Record)
+- `id` (UUID, primary key)
+- `title` (string)
+- `description` (string, optional)
+- `status` (PENDING | IN_PROGRESS | DONE)
+- `amount` (Decimal) ← Uses Decimal for financial precision
+- `type` (INCOME | EXPENSE)
+- `category` (string)
+- `date` (DateTime)
+- `notes` (string, max 500 chars)
+- `assignedToId` (FK → User)
+- `customerId` (FK → Customer)
+- `createdAt`, `updatedAt`
 
-* id, name, email, phone, company
+---
 
-### Task
+## 🚀 Deployment Notes
 
-* id, title, description, status
-* assignedTo → User
-* customerId → Customer
+* Ensure `JWT_SECRET` is set to a strong, random string (min 32 characters)
+* Set `NODE_ENV=production` for production builds
+* Use a managed PostgreSQL instance in production
+* Enable HTTPS on production endpoints
+* Configure appropriate rate limiting on auth endpoints
+* Set up proper logging and monitoring
+* Use environment-specific `.env` files (`.env.production`, `.env.development`)
+
+---
+
+## 📝 Notes
+
+- All timestamps use ISO 8601 format
+- UUID format for all IDs
+- Decimal type used for financial amounts to prevent floating-point precision loss
+- Date filtering uses inclusive boundaries (gte/lte)
+- Category search is case-insensitive
 
 ---
 

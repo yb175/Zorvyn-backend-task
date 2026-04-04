@@ -163,4 +163,35 @@ userRouter.patch("/:id", adminMiddleware, userController.updateUserRole);
  */
 userRouter.patch("/:id/status", adminMiddleware, userController.updateUserStatus);
 
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete a user
+ *     tags: [Users]
+ *     description: Accessible only by Admin users to permanently delete a user account and associated data.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *       400:
+ *         description: Cannot delete own account
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - only Admin users can delete
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+userRouter.delete("/:id", adminMiddleware, userController.deleteUser);
+
 export default userRouter;
