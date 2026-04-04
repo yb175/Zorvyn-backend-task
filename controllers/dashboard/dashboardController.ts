@@ -36,7 +36,8 @@ export const getDashboardSummary = async (req: any, res: any): Promise<void> => 
             message: "Dashboard summary retrieved successfully",
         });
     } catch (error: any) {
-        res.status(500).json({ success: false, message: error.message || "Failed to retrieve dashboard summary" });
+        console.error("Dashboard summary error:", error);
+       res.status(500).json({ success: false, message: "Failed to retrieve dashboard summary" });
     }
 };
 
@@ -160,6 +161,7 @@ export const getDashboardInsights = async (req: any, res: any): Promise<void> =>
             message: "Dashboard insights retrieved successfully",
         });
     } catch (error: any) {
-        res.status(500).json({ success: false, message: error.message || "Failed to retrieve dashboard insights" });
+        console.error("Dashboard insights error:", error);
+        res.status(500).json({ success: false, message: "Failed to retrieve dashboard insights" });
     }
 };
