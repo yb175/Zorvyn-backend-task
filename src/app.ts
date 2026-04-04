@@ -7,9 +7,10 @@ import customerRouter from "./routes/customers.js";
 import bodyParser from "body-parser";
 import tasksRouter from "./routes/tasks.js";
 import dashboardRouter from "./routes/dashboard.js";
-
+import cors from "cors";
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json({
   strict: true, // Ensures only valid JSON is parsed
