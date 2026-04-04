@@ -1,5 +1,5 @@
 import express from "express";
-import { createTask, getTaskInsights, getTasks, updateTaskStatus } from "../../controllers/tasks/tasksController.js";
+import { createTask, getTaskInsights, getTasks, updateTaskStatus, deleteTask } from "../../controllers/tasks/tasksController.js";
 import adminMiddleware from "../../middleware/adminmiddleware.js";
 import userMiddleware from "../../middleware/usermiddleware.js";
 
@@ -16,9 +16,9 @@ const tasksRouter: express.Router = express.Router();
  * @swagger
  * /tasks:
  *   post:
- *     summary: Create a new task
- *     tags: [Tasks]
- *     description: Accessible only by Admin users to create tasks.
+ *     summary: Create a new financial record
+ *     tags: [Financial Records]
+ *     description: Accessible only by Admin users to create financial records.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -26,22 +26,24 @@ const tasksRouter: express.Router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateTask'
+ *             $ref: '#/components/schemas/CreateFinancialRecord'
  *           example:
- *             title: "Task Title"
- *             description: "Task Description"
+ *             amount: 150.50
+ *             type: "EXPENSE"
+ *             category: "Office Supplies"
+ *             date: "2026-04-03T10:30:00Z"
+ *             notes: "Q1 office supply purchase"
  *             assignedTo: "employeeId"
  *             customerId: "customerId"
- *             status: "PENDING"
  *     responses:
  *       201:
- *         description: Task created successfully
+ *         description: Financial record created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Task'
+ *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       400:
- *         description: Missing required fields
+ *         description: Validation failed - invalid amount, type, or category
  *       404:
  *         description: Assigned employee or customer not found
  *       500:
@@ -53,20 +55,58 @@ tasksRouter.post("/", adminMiddleware, createTask);
  * @swagger
  * /tasks:
  *   get:
- *     summary: Get all tasks
- *     tags: [Tasks]
- *     description: Accessible by Admin and Analyst users to view all tasks, or by Employees to view their assigned tasks.
+ *     summary: Get financial records with filtering support
+ *     tags: [Financial Records]
+ *     description: Retrieve financial records. Admin/Analyst can view all records. Employees can only view their assigned records.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [INCOME, EXPENSE]
+ *         description: Filter by record type
+ *       - in: query
+ *         name: category
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter by category (case-insensitive partial match)
+ *       - in: query
+ *         name: dateFrom
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter records from this date (inclusive, ISO 8601 format)
+ *       - in: query
+ *         name: dateTo
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter records until this date (inclusive, ISO 8601 format)
  *     responses:
  *       200:
- *         description: List of tasks
+ *         description: List of financial records
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Task'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/FinancialRecord'
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Internal server error
  */
@@ -76,18 +116,60 @@ tasksRouter.get("/", userMiddleware, getTasks);
  * @swagger
  * /tasks/insights:
  *   get:
- *     summary: Get task insights
- *     tags: [Tasks]
- *     description: Accessible only by Admin and Analyst users. Employees cannot access analytics.
+ *     summary: Get financial insights and analytics
+ *     tags: [Financial Records]
+ *     description: Retrieve financial analytics including income, expenses, balance, and category breakdown. Only accessible to Admin and Analyst users.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Task summary information
- *       401:
- *         description: Unauthorized
+ *         description: Financial insights retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalIncome:
+ *                           type: number
+ *                         totalExpense:
+ *                           type: number
+ *                         netBalance:
+ *                           type: number
+ *                     recordStatus:
+ *                       type: object
+ *                       properties:
+ *                         totalTasks:
+ *                           type: integer
+ *                         pendingTasks:
+ *                           type: integer
+ *                         inProgressTasks:
+ *                           type: integer
+ *                         doneTasks:
+ *                           type: integer
+ *                     categoryBreakdown:
+ *                       type: object
+ *                       additionalProperties:
+ *                         type: object
+ *                         properties:
+ *                           count:
+ *                             type: integer
+ *                           amount:
+ *                             type: number
+ *                           type:
+ *                             type: string
+ *                 message:
+ *                   type: string
  *       403:
- *         description: Forbidden
+ *         description: Forbidden - only Admin and Analyst roles can access insights
  *       500:
  *         description: Internal server error
  */
@@ -133,5 +215,48 @@ tasksRouter.get("/insights", userMiddleware, getTaskInsights);
  *         description: Internal server error
  */
 tasksRouter.patch("/:id/status", userMiddleware, updateTaskStatus);
+
+/**
+ * @swagger
+ * /tasks/{id}:
+ *   delete:
+ *     summary: Delete a financial record
+ *     tags: [Financial Records]
+ *     description: Delete a financial record. Only accessible by Admin users.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Financial record ID
+ *     responses:
+ *       200:
+ *         description: Financial record deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   nullable: true
+ *                   example: null
+ *                 message:
+ *                   type: string
+ *       403:
+ *         description: Forbidden - only Admin users can delete records
+ *       404:
+ *         description: Financial record not found
+ *       500:
+ *         description: Internal server error
+ */
+tasksRouter.delete("/:id", adminMiddleware, deleteTask);
 
 export default tasksRouter;

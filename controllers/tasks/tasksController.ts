@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { z } from "zod";
+import { createFinancialRecordSchema, filterFinancialRecordsSchema } from "../../utils/financialRecordValidation.js";
 
 // Schema for updating task status (financial record status)
 const updateTaskStatusSchema = z.object({
@@ -9,10 +10,14 @@ const updateTaskStatusSchema = z.object({
 export async function createTask(req: any, res: any): Promise<void> {
     // Create a financial record (task) assigned to an employee for a customer
     try {
-        const { title, description, assignedTo, customerId, status } = req.body;
-        if (!title || !assignedTo || !customerId) {
-            return res.status(400).json({ success: false, message: "title, assignedTo and customerId are required" });
+        const parsed = createFinancialRecordSchema.safeParse(req.body);
+        
+        if (!parsed.success) {
+            return res.status(400).json({ success: false, message: "Validation failed", data: parsed.error.format() });
         }
+
+        const { amount, type, category, date, notes, title, description, assignedTo, customerId, status } = parsed.data;
+
         const employee = await prisma.user.findUnique({ where: { id: assignedTo } });
         if (!employee || employee.role !== "EMPLOYEE" || employee.status !== "ACTIVE") {
             return res.status(404).json({ success: false, message: "Assigned employee not found" });
@@ -24,14 +29,20 @@ export async function createTask(req: any, res: any): Promise<void> {
         }
 
         const allowedStatuses = ["PENDING", "IN_PROGRESS", "DONE"];
-        const finalStatus = allowedStatuses.includes(status) ? status : "PENDING";
+        const finalStatus = allowedStatuses.includes(status!) ? status : "PENDING";
+
         const task = await prisma.task.create({
             data: {
-                title,
-                description,
+                title: title || `${type} - ${category}`,
+                description: description || notes || null,
+                amount: amount || 0,
+                type,
+                category,
+                date: date ? new Date(date) : new Date(),
+                notes: notes || null,
+                status: finalStatus as any,
                 assignedToId: assignedTo,
                 customerId,
-                status: finalStatus,
             },
         });
 
@@ -47,8 +58,39 @@ const getTasks = async (req: any, res: any) => {
         const isAdmin = user.role === "ADMIN";
         const isAnalyst = user.role === "ANALYST";
 
+        // Parse and validate filter parameters
+        const filterParsed = filterFinancialRecordsSchema.safeParse(req.query);
+        
+        // Return 400 error if filters are invalid
+        if (Object.keys(req.query).length > 0 && !filterParsed.success) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid filters", 
+                data: filterParsed.error.format() 
+            });
+        }
+        
+        // Build where clause for filtering
+        const where: any = isAdmin || isAnalyst ? {} : { assignedToId: user.userId };
+        
+        if (filterParsed.success) {
+            const { type, category, dateFrom, dateTo } = filterParsed.data;
+            
+            if (type) {
+                where.type = type;
+            }
+            if (category) {
+                where.category = { contains: category, mode: "insensitive" };
+            }
+            if (dateFrom || dateTo) {
+                where.date = {};
+                if (dateFrom) where.date.gte = new Date(dateFrom);
+                if (dateTo) where.date.lte = new Date(dateTo);
+            }
+        }
+
         const tasks = await prisma.task.findMany({
-            where: isAdmin || isAnalyst ? {} : { assignedToId: user.userId },
+            where,
             include: {
                 assignedTo: {
                     select: {
@@ -66,9 +108,12 @@ const getTasks = async (req: any, res: any) => {
                     },
                 },
             },
+            orderBy: {
+                date: 'desc' as any,
+            },
         });
 
-        res.json({ success: true, data: tasks });
+        res.json({ success: true, data: tasks, message: "Financial records retrieved successfully" });
     } catch (error) {
         res.status(500).json({ success: false, message: "Failed to retrieve financial records" });
     }
@@ -82,6 +127,46 @@ const getTaskInsights = async (req: any, res: any) => {
             return res.status(403).json({ success: false, message: "Forbidden: Insights are available to Admin and Analyst users only" });
         }
 
+        // Financial metrics using Prisma aggregations to avoid precision loss
+        const incomeAgg = await prisma.task.aggregate({
+            where: { type: "INCOME" },
+            _sum: { amount: true },
+            _count: true,
+        });
+
+        const expenseAgg = await prisma.task.aggregate({
+            where: { type: "EXPENSE" },
+            _sum: { amount: true },
+            _count: true,
+        });
+
+        const totalIncome = incomeAgg._sum.amount ? Number(incomeAgg._sum.amount) : 0;
+        const totalExpense = expenseAgg._sum.amount ? Number(expenseAgg._sum.amount) : 0;
+        const netBalance = totalIncome - totalExpense;
+
+        // Category breakdown using Prisma groupBy to avoid in-memory calculation
+        const categoryBreakdownRaw = await prisma.task.groupBy({
+            by: ["type", "category"],
+            where: {
+                type: { in: ["INCOME", "EXPENSE"] },
+                category: { not: null },
+            },
+            _sum: { amount: true },
+            _count: true,
+        });
+
+        // Build category breakdown with composite keys to avoid collisions
+        const categoryBreakdown: Record<string, { count: number; amount: number; type: string }> = {};
+        categoryBreakdownRaw.forEach((record: any) => {
+            const compositeKey = `${record.type}:${record.category}`;
+            categoryBreakdown[compositeKey] = {
+                count: record._count,
+                amount: record._sum.amount ? Number(record._sum.amount) : 0,
+                type: record.type,
+            };
+        });
+
+        // Status counts
         const [totalTasks, pendingTasks, inProgressTasks, doneTasks] = await Promise.all([
             prisma.task.count(),
             prisma.task.count({ where: { status: "PENDING" } }),
@@ -92,15 +177,23 @@ const getTaskInsights = async (req: any, res: any) => {
         return res.json({
             success: true,
             data: {
-                totalTasks,
-                pendingTasks,
-                inProgressTasks,
-                doneTasks,
+                summary: {
+                    totalIncome,
+                    totalExpense,
+                    netBalance,
+                },
+                recordStatus: {
+                    totalTasks,
+                    pendingTasks,
+                    inProgressTasks,
+                    doneTasks,
+                },
+                categoryBreakdown,
             },
-            message: "Task insights retrieved successfully",
+            message: "Financial insights retrieved successfully",
         });
     } catch (error) {
-        return res.status(500).json({ success: false, message: "Failed to retrieve task insights" });
+        return res.status(500).json({ success: false, message: "Failed to retrieve financial insights" });
     }
 };
 
@@ -137,4 +230,32 @@ const updateTaskStatus = async (req: any, res: any) => {
     }
 };
 
-export  { getTasks, getTaskInsights, updateTaskStatus };
+const deleteTask = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+
+        // Only ADMIN can delete financial records
+        if (user.role !== "ADMIN") {
+            return res.status(403).json({ success: false, message: "Forbidden: Only Admin users can delete financial records" });
+        }
+
+        const task = await prisma.task.findUnique({
+            where: { id: id },
+        });
+
+        if (!task) {
+            return res.status(404).json({ success: false, message: "Financial record not found" });
+        }
+
+        await prisma.task.delete({
+            where: { id: id },
+        });
+
+        res.json({ success: true, data: null, message: "Financial record deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Failed to delete financial record" });
+    }
+};
+
+export { getTasks, getTaskInsights, updateTaskStatus, deleteTask };

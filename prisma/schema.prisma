@@ -43,6 +43,11 @@ model Customer {
   tasks Task[] 
 }
 
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
 enum TaskStatus {
   PENDING
   IN_PROGRESS
@@ -50,14 +55,22 @@ enum TaskStatus {
 }
 
 model Task {
-  id          String     @id @default(uuid())
-  title       String
-  description String? 
-  status      TaskStatus @default(PENDING)
-  assignedTo   User   @relation(fields: [assignedToId], references: [id])
-  assignedToId String
-  customer   Customer @relation(fields: [customerId], references: [id])
-  customerId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String          @id @default(uuid())
+  title         String
+  description   String? 
+  status        TaskStatus      @default(PENDING)
+  
+  // Financial Record Fields
+  amount        Decimal         @default(0)
+  type          TransactionType?
+  category      String?
+  date          DateTime        @default(now())
+  notes         String?         /// Max 500 characters
+  
+  assignedTo    User   @relation(fields: [assignedToId], references: [id])
+  assignedToId  String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  customerId    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
