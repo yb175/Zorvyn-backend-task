@@ -35,7 +35,16 @@ app.use("/customers", customerRouter);
 app.use("/tasks", tasksRouter);
 app.use("/dashboard", dashboardRouter);
 const PORT = process.env.PORT || 5000;
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  console.log('[Health] Ping received');
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
+  console.log(`[Server] Starting on http://localhost:${PORT}`);
+  console.log(`[Server] Swagger docs available at http://localhost:${PORT}/api-docs`);
+  console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`[Server] Ready to accept requests`);
 });
