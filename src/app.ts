@@ -6,6 +6,7 @@ import userRouter from "./routes/user.js";
 import customerRouter from "./routes/customers.js";
 import bodyParser from "body-parser";
 import tasksRouter from "./routes/tasks.js";
+import dashboardRouter from "./routes/dashboard.js";
 
 
 const app = express();
@@ -31,6 +32,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/users", userRouter);
 app.use("/customers", customerRouter);
 app.use("/tasks", tasksRouter);
+app.use("/dashboard", dashboardRouter);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
