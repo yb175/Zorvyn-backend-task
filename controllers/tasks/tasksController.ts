@@ -267,14 +267,36 @@ const updateTask = async (req: any, res: any) => {
 
         // Build update data - only include provided fields
         const updateData: any = {};
-        if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount;
-        if (parsed.data.type !== undefined) updateData.type = parsed.data.type;
-        if (parsed.data.category !== undefined) updateData.category = parsed.data.category;
-        if (parsed.data.date !== undefined) updateData.date = new Date(parsed.data.date);
-        if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
-        if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
-        if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
-        if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+        
+        // Check if user is admin
+        const isAdmin = user.role === "ADMIN";
+        
+        // For non-admins, only allow status updates
+        if (!isAdmin) {
+            // Non-admin employees can only update status
+            if (parsed.data.status !== undefined) {
+                updateData.status = parsed.data.status;
+            }
+            // If no status update provided, return error
+            if (Object.keys(updateData).length === 0) {
+                return res.status(400).json({ success: false, message: "Employees can only update record status" });
+            }
+        } else {
+            // Admins can update any field
+            if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount;
+            if (parsed.data.type !== undefined) updateData.type = parsed.data.type;
+            if (parsed.data.category !== undefined) updateData.category = parsed.data.category;
+            if (parsed.data.date !== undefined) updateData.date = new Date(parsed.data.date);
+            if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
+            if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
+            if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+            if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+            
+            // Ensure at least one field is being updated
+            if (Object.keys(updateData).length === 0) {
+                return res.status(400).json({ success: false, message: "At least one updatable field must be provided" });
+            }
+        }
 
         const updatedTask = await prisma.task.update({
             where: { id: id },

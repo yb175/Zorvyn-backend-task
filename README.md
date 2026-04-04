@@ -268,7 +268,8 @@ All API responses follow a consistent structure:
 * Inactive users get **403 Forbidden** on all protected routes
 * Employees can only:
   - View their assigned financial records
-  - Update their own record status
+  - Update their own record **status only** (PENDING, IN_PROGRESS, DONE)
+  - Cannot update financial details (amount, category, type, date, notes)
   - Cannot access dashboard or view all records
 * Analysts can:
   - View all records (read-only)

@@ -179,6 +179,9 @@ const deleteUser = async (req: any, res: any) => {
         if (error.code === "P2025") {
             return res.status(404).json({ success: false, message: "User not found" });
         }
+        if (error.code === "P2003") {
+            return res.status(409).json({ success: false, message: "Cannot delete user: assigned tasks exist. Reassign or delete tasks first." });
+        }
         return res.status(500).json({ success: false, message: "Failed to delete user" });
     }
 };
