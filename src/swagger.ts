@@ -1,5 +1,6 @@
 import swaggerJsdoc from "swagger-jsdoc";
-
+import dotenv from "dotenv";
+dotenv.config();
 export const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: "3.0.0",
@@ -40,7 +41,7 @@ export const swaggerSpec = swaggerJsdoc({
     },
     servers: [
       {
-        url: "http://localhost:5000",
+        url: process.env.BACKEND_URL || "http://localhost:5000",
       },
     ],
     components: {
