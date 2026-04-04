@@ -230,6 +230,80 @@ const updateTaskStatus = async (req: any, res: any) => {
     }
 };
 
+const updateTask = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+
+        // Parse update payload with partial schema
+        const parsed = z.object({
+            amount: z.number().positive("Amount must be greater than 0").optional(),
+            type: z.enum(["INCOME", "EXPENSE"]).optional(),
+            category: z.string().min(1, "Category is required").optional(),
+            date: z.string().datetime("Invalid date format").optional(),
+            notes: z.string().max(500, "Notes cannot exceed 500 characters").optional(),
+            title: z.string().optional(),
+            description: z.string().optional(),
+            status: z.enum(["PENDING", "IN_PROGRESS", "DONE"]).optional(),
+        }).safeParse(req.body);
+
+        if (!parsed.success) {
+            return res.status(400).json({ success: false, message: "Validation failed", data: parsed.error.format() });
+        }
+
+        // Find existing task
+        const task = await prisma.task.findUnique({
+            where: { id: id },
+        });
+
+        if (!task) {
+            return res.status(404).json({ success: false, message: "Financial record not found" });
+        }
+
+        // Authorization: ADMIN can update any record, others can only update their own
+        if (user.role !== "ADMIN" && task.assignedToId !== user.userId) {
+            return res.status(403).json({ success: false, message: "Forbidden: You cannot update this financial record" });
+        }
+
+        // Build update data - only include provided fields
+        const updateData: any = {};
+        if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount;
+        if (parsed.data.type !== undefined) updateData.type = parsed.data.type;
+        if (parsed.data.category !== undefined) updateData.category = parsed.data.category;
+        if (parsed.data.date !== undefined) updateData.date = new Date(parsed.data.date);
+        if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
+        if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
+        if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+        if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+
+        const updatedTask = await prisma.task.update({
+            where: { id: id },
+            data: updateData,
+            include: {
+                assignedTo: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+                customer: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                    },
+                },
+            },
+        });
+
+        res.json({ success: true, data: updatedTask, message: "Financial record updated successfully" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Failed to update financial record" });
+    }
+};
+
 const deleteTask = async (req: any, res: any) => {
     try {
         const { id } = req.params;
@@ -258,4 +332,4 @@ const deleteTask = async (req: any, res: any) => {
     }
 };
 
-export { getTasks, getTaskInsights, updateTaskStatus, deleteTask };
+export { getTasks, getTaskInsights, updateTaskStatus, updateTask, deleteTask };

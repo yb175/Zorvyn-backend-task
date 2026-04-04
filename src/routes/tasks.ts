@@ -1,5 +1,5 @@
 import express from "express";
-import { createTask, getTaskInsights, getTasks, updateTaskStatus, deleteTask } from "../../controllers/tasks/tasksController.js";
+import { createTask, getTaskInsights, getTasks, updateTaskStatus, updateTask, deleteTask } from "../../controllers/tasks/tasksController.js";
 import adminMiddleware from "../../middleware/adminmiddleware.js";
 import userMiddleware from "../../middleware/usermiddleware.js";
 
@@ -215,6 +215,83 @@ tasksRouter.get("/insights", userMiddleware, getTaskInsights);
  *         description: Internal server error
  */
 tasksRouter.patch("/:id/status", userMiddleware, updateTaskStatus);
+
+/**
+ * @swagger
+ * /tasks/{id}:
+ *   patch:
+ *     summary: Update financial record details
+ *     tags: [Financial Records]
+ *     description: Update financial record details (amount, type, category, date, notes, status). Admin users can update any record. Other users can only update their assigned records.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Financial record ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 description: Transaction amount (must be > 0)
+ *               type:
+ *                 type: string
+ *                 enum: [INCOME, EXPENSE]
+ *                 description: Record type
+ *               category:
+ *                 type: string
+ *                 description: Expense/income category
+ *               date:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Transaction date (ISO 8601 format)
+ *               notes:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Additional notes
+ *               title:
+ *                 type: string
+ *                 description: Record title
+ *               description:
+ *                 type: string
+ *                 description: Record description
+ *               status:
+ *                 type: string
+ *                 enum: [PENDING, IN_PROGRESS, DONE]
+ *                 description: Record status
+ *           example:
+ *             amount: 200.75
+ *             type: "INCOME"
+ *             category: "Salary"
+ *             date: "2026-04-04T10:00:00Z"
+ *             notes: "April salary payment"
+ *             status: "DONE"
+ *     responses:
+ *       200:
+ *         description: Financial record updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiSuccessResponse'
+ *       400:
+ *         description: Validation failed
+ *       403:
+ *         description: Forbidden - cannot update this record
+ *       404:
+ *         description: Financial record not found
+ *       500:
+ *         description: Internal server error
+ */
+tasksRouter.patch("/:id", userMiddleware, updateTask);
 
 /**
  * @swagger

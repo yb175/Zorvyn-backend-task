@@ -147,4 +147,40 @@ const updateUserStatus = async (req: any, res: any) => {
     }
 };
 
-export default { createUser, getAllUsers, getUserById, updateUserRole, updateUserStatus };
+const deleteUser = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const currentUser = req.user;
+
+        // Prevent self-deletion
+        if (currentUser.userId === id) {
+            return res.status(400).json({ success: false, message: "Cannot delete your own account" });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id },
+        });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Delete user and cascade delete their associated tasks
+        await prisma.user.delete({
+            where: { id },
+        });
+
+        return res.json({
+            success: true,
+            data: null,
+            message: "User deleted successfully",
+        });
+    } catch (error: any) {
+        if (error.code === "P2025") {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+        return res.status(500).json({ success: false, message: "Failed to delete user" });
+    }
+};
+
+export default { createUser, getAllUsers, getUserById, updateUserRole, updateUserStatus, deleteUser };
