@@ -13,14 +13,22 @@ export const swaggerSpec = swaggerJsdoc({
     - Financial Records (Tasks) support income/expense categorization with detailed analytics
     - Financial Entities (Customers) represent accounts/clients
     - Enhanced filtering and financial metrics for decision-making
+    - Dashboard analytics provide summarized insights for authorized users
 
     ## Role Definitions
 
     | Role | Access |
     | --- | --- |
-    | ADMIN | Full CRUD on records, financial management, insights analytics |
-    | ANALYST | Read-only access to all records and financial insights |
-    | EMPLOYEE | View assigned records only; no insights or deletion |
+    | ADMIN | Full CRUD on records, financial management, dashboard summary & insights, analytics |
+    | ANALYST | Read-only access to all records, dashboard summary & insights, financial analytics |
+    | EMPLOYEE | View assigned records only; no dashboard, insights, or deletion |
+
+    ## Dashboard Access
+
+    - **GET /dashboard/summary** - Total income, total expense, net balance
+    - **GET /dashboard/insights** - Category-wise breakdown, recent activity (last 5), monthly trends
+    - Accessible to: ADMIN, ANALYST only
+    - EMPLOYEE users receive 403 Forbidden
 
     ## Authorization Notes
 
