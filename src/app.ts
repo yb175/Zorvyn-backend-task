@@ -11,7 +11,6 @@ import cors from "cors";
 
 const app = express();
 app.use(cors());
-app.options("*", cors());
 app.use(express.json());
 app.use(bodyParser.json({
   strict: true, // Ensures only valid JSON is parsed
